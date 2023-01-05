@@ -55,4 +55,14 @@ public class Television {
     public List<Program> getPrograms() {
         return programs;
     }
+
+    @Override
+    public String toString() {
+        return "Television{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", type=" + type +
+                ", foundedYear=" + foundedYear +
+                '}';
+    }
 }
