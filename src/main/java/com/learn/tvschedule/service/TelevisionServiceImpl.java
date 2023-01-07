@@ -1,21 +1,23 @@
 package com.learn.tvschedule.service;
 
-import com.learn.tvschedule.dao.TelevisionDAO;
-import com.learn.tvschedule.dao.TelevisionDAOImpl;
+import com.learn.tvschedule.dao.*;
 import com.learn.tvschedule.model.Program;
 import com.learn.tvschedule.model.Television;
 import com.learn.tvschedule.model.TelevisionScheduleException;
 import com.learn.tvschedule.model.TelevisionType;
 
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 public class TelevisionServiceImpl implements TelevisionService {
 
     private static TelevisionDAO televisionDAO = new TelevisionDAOImpl();
+    private static ProgramDAO programDAO = new ProgramDAOImpl();
 
     private static DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
 
@@ -39,7 +41,7 @@ public class TelevisionServiceImpl implements TelevisionService {
             television.setFoundedYear(foundedYear);
             televisionDAO.addTelevision(television);
         } catch (SQLException ex) {
-            throw new TelevisionScheduleException(ex.getSQLState());
+            throw new TelevisionScheduleException(ex.getMessage());
         }
     }
 
@@ -59,7 +61,7 @@ public class TelevisionServiceImpl implements TelevisionService {
             LocalDate date = LocalDate.parse(dateString, dateFormatter);
             LocalTime startTime = LocalTime.parse(startTimeString, timeFormatter);
             LocalTime endTime = LocalTime.parse(endTimeString, timeFormatter);
-            List<Program> programs = televisionDAO.getProgramsByTelevisionAndDate(televisionId, date);
+            List<Program> programs = programDAO.getProgramsByTelevisionAndDate(televisionId, date);
 
             for (Program program : programs) {
                 if (program.getStartTime().isAfter(startTime) && program.getStartTime().isBefore(endTime)) {
@@ -75,17 +77,70 @@ public class TelevisionServiceImpl implements TelevisionService {
             program.setStartTime(startTime);
             program.setEndTime(endTime);
             program.setTelevisionId(televisionId);
-            televisionDAO.addProgram(program);
+            programDAO.addProgram(program);
         } catch (SQLException ex) {
             throw new TelevisionScheduleException(ex.getMessage());
         }
     }
 
+    @Override
+    public List<Program> getProgramsByDateAndTelevisionName(String televisionName, String date) throws TelevisionScheduleException {
+        try {
+            return programDAO.getProgramsByDateAndTelevisionName(televisionName, LocalDate.parse(date, dateFormatter));
+        } catch (SQLException ex) {
+            throw new TelevisionScheduleException(ex.getMessage());
+        }
+    }
 
     @Override
-    public List<Program> getAllProgram() throws TelevisionScheduleException {
+    public List<Program> getAllNextWeekProgramsByTvName(String televisionName) throws TelevisionScheduleException {
         try {
-            return televisionDAO.getAllProgram();
+            LocalDate now = LocalDate.now();
+            LocalDate nextWeek = now.plus(1, ChronoUnit.WEEKS);
+
+            return programDAO.getAllProgramsByTvNameStartAndEndDate(televisionName, now, nextWeek);
+        } catch (SQLException ex) {
+            throw new TelevisionScheduleException(ex.getMessage());
+        }
+    }
+
+    @Override
+    public void deleteProgram(String programId) throws TelevisionScheduleException {
+        try {
+            programDAO.deleteProgram(Integer.parseInt(programId));
+        } catch (SQLException ex) {
+            throw new TelevisionScheduleException(ex.getMessage());
+        }
+    }
+
+    @Override
+    public void deleteTelevision(String televisionId) throws TelevisionScheduleException {
+        // Two DAO methods must be transactional
+        try {
+            Connection connection = DaoUtils.getConnection();
+            connection.setAutoCommit(false);  // Begin transaction
+            programDAO.deleteProgramsByTelevisionId(Integer.parseInt(televisionId));
+            televisionDAO.deleteTelevision(Integer.parseInt(televisionId));
+            connection.commit();   // End transaction
+            connection.setAutoCommit(true);
+        } catch (SQLException ex) {
+            throw new TelevisionScheduleException(ex.getMessage());
+        }
+    }
+
+    @Override
+    public List<Television> getAllTelevisionByType(String typeName) throws TelevisionScheduleException {
+        try {
+            return televisionDAO.getAllTelevisionByType(typeName);
+        } catch (SQLException ex) {
+            throw new TelevisionScheduleException(ex.getMessage());
+        }
+    }
+
+    @Override
+    public List<Program> getAllTelevisionProgramByDate() throws TelevisionScheduleException {
+        try {
+            return programDAO.getAllProgramByDate(LocalDate.now());
         } catch (SQLException ex) {
             throw new TelevisionScheduleException(ex.getMessage());
         }

@@ -20,6 +20,12 @@ public class Television {
         this.foundedYear = foundedYear;
     }
 
+    public Television(int id, String name,  int foundedYear) {
+        this.id = id;
+        this.name = name;
+        this.foundedYear = foundedYear;
+    }
+
     public int getId() {
         return id;
     }
@@ -64,5 +70,9 @@ public class Television {
                 ", type=" + type +
                 ", foundedYear=" + foundedYear +
                 '}';
+    }
+
+    public String showIdNameFoundedYear(){
+        return "television{ id = " + id + "name =" + name + "foundedYear = " + foundedYear;
     }
 }
